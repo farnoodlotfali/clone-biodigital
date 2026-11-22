@@ -1,0 +1,16 @@
+{
+  "errors": [],
+  "mobileOverflow": false,
+  "checks": [
+    "model loads",
+    "signup dismisses",
+    "anatomy search",
+    "selection",
+    "layer slider",
+    "reset",
+    "draw and undo",
+    "orbit drag",
+    "mobile info panel",
+    "no mobile overflow"
+  ]
+}
