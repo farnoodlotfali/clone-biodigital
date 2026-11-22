@@ -3,7 +3,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { DDSLoader } from "three/addons/loaders/DDSLoader.js";
 
 type Tool = "Select" | "Hide" | "Fade";
 export type SceneHandle = {
@@ -160,23 +159,36 @@ export const AnatomyScene = forwardRef<SceneHandle, Props>(
       const clear = () =>
         meshes.forEach((mesh) => mesh.material.emissive.set(0));
       engine.current = { renderer, camera, controls, meshes, clear };
-      const loader = new DDSLoader();
-      const color = loader.load("/sites/biodigital/respiratory-color.dds");
-      color.colorSpace = THREE.SRGBColorSpace;
-      color.flipY = false;
-      const normal = loader.load("/sites/biodigital/respiratory-normal.dds");
-      normal.flipY = false;
-      const roughness = loader.load(
-        "/sites/biodigital/respiratory-roughness.dds",
-      );
-      roughness.flipY = false;
+      // Standard image textures also work on mobile GPUs without S3TC/DXT.
+      const loader = new THREE.TextureLoader();
+      const textures: THREE.Texture[] = [];
+      const loadTexture = async (
+        name: string,
+        colorSpace: THREE.ColorSpace = THREE.NoColorSpace,
+      ) => {
+        const texture = await loader.loadAsync(
+          `/sites/biodigital/respiratory-${name}.png`,
+        );
+        texture.colorSpace = colorSpace;
+        texture.flipY = false;
+        if (stopped) texture.dispose();
+        else textures.push(texture);
+        return texture;
+      };
       const controller = new AbortController();
-      fetch("/sites/biodigital/anatomy.json", { signal: controller.signal })
-        .then((response) => {
-          if (!response.ok) throw new Error("Anatomy asset unavailable");
-          return response.json();
-        })
-        .then((data: { meshes: MeshAsset[] }) => {
+      const model = fetch("/sites/biodigital/anatomy.json", {
+        signal: controller.signal,
+      }).then((response): Promise<{ meshes: MeshAsset[] }> => {
+        if (!response.ok) throw new Error("Anatomy asset unavailable");
+        return response.json();
+      });
+      Promise.all([
+        model,
+        loadTexture("color", THREE.SRGBColorSpace),
+        loadTexture("normal"),
+        loadTexture("roughness"),
+      ])
+        .then(([data, color, normal, roughness]) => {
           if (stopped) return;
           data.meshes.forEach((asset) => {
             const geometry = new THREE.BufferGeometry();
@@ -347,9 +359,7 @@ export const AnatomyScene = forwardRef<SceneHandle, Props>(
           mesh.geometry.dispose();
           mesh.material.dispose();
         });
-        color.dispose();
-        normal.dispose();
-        roughness.dispose();
+        textures.forEach((texture) => texture.dispose());
         renderer.dispose();
         renderer.domElement.remove();
         engine.current = null;

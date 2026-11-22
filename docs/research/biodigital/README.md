@@ -26,7 +26,7 @@ Observed states: signup open and dismissed; information column expanded/collapse
 
 ## Local assets
 
-All runtime assets live under `public/sites/biodigital/`.
+All runtime assets live under `public/sites/biodigital/`. The renderer uses `respiratory-color.png`, `respiratory-normal.png` and `respiratory-roughness.png`, converted from the source DDS atlases by `node scripts/prepare-biodigital-textures.mjs`. These 1024px PNGs work without S3TC/DXT GPU extensions and reduce GPU memory use on phones. DDS files are retained as conversion inputs only. The scene waits for all three image textures and model data before dismissing its loading state; failed texture downloads display the existing retry message.
 
 | Asset | Source |
 | --- | --- |
@@ -41,7 +41,7 @@ All runtime assets live under `public/sites/biodigital/`.
 | `powered-by-color.svg` | Same directory, `powered-by-biodigital-anatomage-color.svg` |
 | `respiratory-preview.jpg` | Source Open Graph preview: `https://human.biodigital.com/media/images/77bd6567-d52a-4df7-886b-bcf54888c110/large/image.jpg`; retained as a reference, not used as the viewer |
 
-The DDS responses are gzip streams; the saved runtime files have been decompressed and checked for their DDS signature. Source SVGs and fonts were downloaded directly. Geometry is rendered locally, with no embedded source iframe or downloaded application bundle. BioDigital and Anatomage attribution remains visible; these source assets remain their owners' content.
+The DDS responses are gzip streams; the saved source files have been decompressed and checked for their DDS signature before PNG conversion. Source SVGs and fonts were downloaded directly. Geometry is rendered locally, with no embedded source iframe or downloaded application bundle. BioDigital and Anatomage attribution remains visible; these source assets remain their owners' content.
 
 `scripts/extract-biodigital.mjs` captures the publicly rendered geometry. `scripts/prepare-biodigital-model.mjs` decodes it into the local scene asset. `model-raw.json` is the extraction input. Extraction scripts do not access account credentials or private content.
 
@@ -52,6 +52,10 @@ The DDS responses are gzip streams; the saved runtime files have been decompress
 Browser checks cover loading, signup dismissal, search filtering, selection, layer opacity, camera reset, actual orbit input changing the canvas, drawing/undo, mobile information panel, console/page errors and horizontal overflow. Browser automation uses the locally installed Edge and Playwright in `%TEMP%/biodigital-browser-tools`; install tooling there with `npm install --prefix "$env:TEMP\biodigital-browser-tools" playwright --no-audit --no-fund` if needed. Start the dev server, then run `node scripts/check-biodigital.mjs`.
 
 See `../../design-references/biodigital/comparison.html` for source/local desktop and mobile views.
+
+### Mobile texture regression
+
+Run `node scripts/check-mobile-textures.mjs` against the running localhost dev server. It disables S3TC extensions in both WebGL contexts, checks the rendered canvas for colored respiratory anatomy, checks for runtime errors, and aborts a texture download to verify the retry message. This tests the GPU capability difference that viewport-only mobile emulation missed. The result and screenshot are `mobile-textures-after.json` and `../../design-references/biodigital/mobile-no-s3tc-after.png`. This simulated check does not replace testing on the user's physical phone after deployment.
 
 ## Remaining differences
 
