@@ -65,7 +65,7 @@ function ToolButton({
 
 export function BioDigitalViewer() {
   const [panel, setPanel] = useState<Panel>("info");
-  const [signupOpen, setSignupOpen] = useState(true);
+  // const [signupOpen, setSignupOpen] = useState(true);
   const [menu, setMenu] = useState<"tools" | "more" | "help" | null>(null);
   const [tool, setTool] = useState<Tool>("Select");
   const [query, setQuery] = useState("");
@@ -146,7 +146,7 @@ export function BioDigitalViewer() {
       ref={shell}
       className={`bd-app ${drawing ? "is-drawing" : ""} ${full ? "is-fullscreen" : ""}`}
     >
-      {!drawing && (
+      {/* {!drawing && (
         <header className="bd-header">
           <a
             href="https://www.biodigital.com/"
@@ -171,7 +171,7 @@ export function BioDigitalViewer() {
             Sign Up For Free
           </a>
         </header>
-      )}
+      )} */}
       <main className={`bd-workspace ${panel && !drawing ? "has-panel" : ""}`}>
         {!drawing && panel && (
           <aside className={`bd-panel ${mobileInfo ? "mobile-open" : ""}`}>
@@ -358,14 +358,14 @@ export function BioDigitalViewer() {
               </a>
             </div>
           )}
-          <Image
+          {/* <Image
             width={260}
             height={64}
             className="bd-watermark"
             src="/sites/biodigital/powered-by.svg"
             alt="BioDigital, a division of Anatomage"
-          />
-          <a
+          /> */}
+          {/* <a
             className="bd-attribution"
             href="https://www.biodigital.com/"
             target="_blank"
@@ -377,7 +377,7 @@ export function BioDigitalViewer() {
               src="/sites/biodigital/powered-by-color.svg"
               alt="Powered by BioDigital, a division of Anatomage"
             />
-          </a>
+          </a> */}
 
           {!drawing && (
             <>
@@ -542,6 +542,8 @@ export function BioDigitalViewer() {
                   />
                 </div>
               </div>
+
+              
               {selected && (
                 <div className="bd-selected">
                   <span>{selected}</span>
@@ -559,6 +561,7 @@ export function BioDigitalViewer() {
             </>
           )}
 
+          {/* برای نقاشی */}
           {drawing && (
             <>
               <svg

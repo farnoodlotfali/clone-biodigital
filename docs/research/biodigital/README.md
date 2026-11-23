@@ -8,6 +8,12 @@ From the project directory, run `npm run dev`, then open:
 
 The homepage (`/`) also opens the same model. This project runs locally without a BioDigital login or runtime connection to its renderer.
 
+### Open from a phone on the same Wi-Fi
+
+`npm run dev` listens on all local interfaces. Open the computer's Wi-Fi address on the phone, for example `http://192.168.1.101:3000/view`; `localhost` on the phone points to the phone itself. `next.config.ts` adds this computer's current IPv4 interface addresses to `allowedDevOrigins`, so Next.js can serve its development resources when accessed over the LAN. Restart the dev server after changing networks or IP addresses.
+
+`node scripts/check-lan-loading.mjs` verifies that the LAN URL hydrates, creates the 3D canvas, finishes loading, and supports anatomy search at a mobile viewport. The before/after results are `lan-loading-before.json` and `lan-loading-after.json`, with screenshots in `../../design-references/biodigital/`. Before allowing the LAN address, the page remained on the loading state with no canvas; afterward, the model and controls loaded without failed HTTP responses or runtime errors.
+
 ## Route and file ownership
 
 | Source | Local route | Implementation |
