@@ -1,8 +1,16 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import anatomyCatalog from "./anatomy-catalog.json";
+import respiratoryLayers from "./respiratory-layers.json";
 
 type Tool = "Select" | "Hide" | "Fade";
 export type SceneHandle = {
@@ -10,8 +18,12 @@ export type SceneHandle = {
   zoom: (factor: number) => void;
   select: (name: string, tool: Tool) => void;
   clearSelection: () => void;
+  setVisible: (name: string, visible: boolean) => void;
+  focus: (name: string) => void;
+  isolate: (name: string) => void;
 };
 type MeshAsset = {
+  structureIds: string[];
   name: string;
   layer: "skin" | "respiratory";
   textured: boolean;
@@ -52,38 +64,62 @@ export const AnatomyScene = forwardRef<SceneHandle, Props>(
       meshes: AnatomyMesh[];
       clear: () => void;
     } | null>(null);
-    function select(name: string, tool: Tool) {
-      const state = engine.current;
-      if (!state) return;
-      state.clear();
-      const matches = state.meshes.filter(
-        (mesh) =>
-          mesh.name.toLowerCase().includes(name.toLowerCase()) ||
-          name.toLowerCase().includes(mesh.name.toLowerCase()),
+    const findMeshes = useCallback((name: string) => {
+      const structure = anatomyCatalog.find(
+        (structure) => structure.name === name,
       );
-      if (!matches.length) {
-        const group = /sinus|nasal|ethmoid|frontal/i.test(name)
-          ? "Nasal"
-          : /bronch/i.test(name)
-            ? "Bronchi"
-            : /pharyn|auditory/i.test(name)
-              ? "Pharynx"
-              : /clothes|hair|eyebrow|eyelash/i.test(name)
-                ? "Body"
-                : "Larynx";
-        matches.push(
-          ...state.meshes.filter((mesh) => mesh.name.includes(group)),
-        );
-      }
-      matches.forEach((mesh) => {
-        if (tool === "Hide") mesh.userData.hidden = true;
-        else if (tool === "Fade") mesh.userData.faded = true;
-        else {
-          mesh.material.emissive.set("#e5b000");
-          mesh.material.emissiveIntensity = 0.38;
-        }
-      });
+      return (
+        engine.current?.meshes.filter((mesh) =>
+          structure
+            ? mesh.userData.structureIds.includes(structure.id)
+            : mesh.name === name,
+        ) ?? []
+      );
+    }, []);
+    function focus(name: string) {
+      const state = engine.current;
+      const matches = findMeshes(name);
+      if (!state || !matches.length) return;
+      const box = new THREE.Box3();
+      matches.forEach((mesh) => box.expandByObject(mesh));
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const direction = state.camera.position
+        .clone()
+        .sub(state.controls.target)
+        .normalize();
+      const verticalFov = THREE.MathUtils.degToRad(state.camera.fov);
+      const horizontalFov =
+        2 * Math.atan(Math.tan(verticalFov / 2) * state.camera.aspect);
+      const radius = size.length() / 2;
+      const distance =
+        (radius / Math.sin(Math.min(verticalFov, horizontalFov) / 2)) * 1.25;
+      state.camera.near = Math.min(0.01, Math.max(distance / 100, 0.00001));
+      state.camera.updateProjectionMatrix();
+      state.controls.minDistance = 0.002;
+      state.camera.position
+        .copy(center)
+        .addScaledVector(direction, Math.max(distance, 0.012));
+      state.controls.target.copy(center);
+      state.controls.update();
     }
+    const select = useCallback(
+      (name: string, tool: Tool) => {
+        const state = engine.current;
+        if (!state) return;
+        state.clear();
+        const matches = findMeshes(name);
+        matches.forEach((mesh) => {
+          if (tool === "Hide") mesh.userData.hidden = true;
+          else if (tool === "Fade") mesh.userData.faded = true;
+          else {
+            mesh.material.emissive.set("#e5b000");
+            mesh.material.emissiveIntensity = 0.38;
+          }
+        });
+      },
+      [findMeshes],
+    );
     useImperativeHandle(ref, () => ({
       reset() {
         const state = engine.current;
@@ -107,6 +143,20 @@ export const AnatomyScene = forwardRef<SceneHandle, Props>(
         state.controls.update();
       },
       select,
+      setVisible(name, visible) {
+        findMeshes(name).forEach((mesh) => {
+          mesh.userData.hidden = !visible;
+        });
+      },
+      focus,
+      isolate(name) {
+        const matches = new Set(findMeshes(name));
+        engine.current?.meshes.forEach((mesh) => {
+          mesh.userData.hidden = !matches.has(mesh);
+          mesh.userData.faded = false;
+        });
+        focus(name);
+      },
       clearSelection() {
         engine.current?.clear();
       },
@@ -270,6 +320,9 @@ export const AnatomyScene = forwardRef<SceneHandle, Props>(
               };
             const mesh = new THREE.Mesh(geometry, material);
             mesh.name = asset.name;
+            mesh.userData.respiratoryStage =
+              (respiratoryLayers as Record<string, number>)[asset.name] ?? 1;
+            mesh.userData.structureIds = asset.structureIds ?? [];
             mesh.userData.layer = skin ? "skin" : "respiratory";
             meshes.push(mesh);
             (skin ? scene : organs).add(mesh);
@@ -332,10 +385,9 @@ export const AnatomyScene = forwardRef<SceneHandle, Props>(
             mesh.material.transparent = mesh.material.opacity < 1;
           } else {
             mesh.visible =
-              current.current.respiratory > 0 && !mesh.userData.hidden;
-            mesh.material.opacity =
-              (current.current.respiratory / 100) *
-              (mesh.userData.faded ? 0.15 : 1);
+              current.current.respiratory >= mesh.userData.respiratoryStage &&
+              !mesh.userData.hidden;
+            mesh.material.opacity = mesh.userData.faded ? 0.15 : 1;
             mesh.material.transparent = mesh.material.opacity < 1;
             mesh.material.depthWrite = mesh.material.opacity === 1;
           }
@@ -364,7 +416,7 @@ export const AnatomyScene = forwardRef<SceneHandle, Props>(
         renderer.domElement.remove();
         engine.current = null;
       };
-    }, []);
+    }, [select]);
     return <div ref={container} className="bd-canvas" />;
   },
 );

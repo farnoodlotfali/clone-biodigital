@@ -4,6 +4,7 @@ const glyphs = {
   expand: "\uf101",
   select: "\uf245",
   layers: "\uf1de",
+  lungs: "\uf604",
   search: "\uf002",
   draw: "\uf304",
   more: "\uf142",

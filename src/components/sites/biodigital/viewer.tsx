@@ -9,6 +9,7 @@ import {
   type ViewerMenu,
 } from "./viewer-controls";
 import { ViewerPanel, type Panel } from "./viewer-panel";
+import anatomyCatalog from "./anatomy-catalog.json";
 import "./viewer.css";
 import Image from "next/image";
 
@@ -20,9 +21,10 @@ export function BioDigitalViewer() {
   const [tool, setTool] = useState<SelectionTool>("Select");
 
   const [selected, setSelected] = useState<string | null>(null);
+  const [hiddenNames, setHiddenNames] = useState<string[]>([]);
   const [skin, setSkin] = useState(82);
 
-  const [respiratory, setRespiratory] = useState(100);
+  const [respiratory, setRespiratory] = useState(4);
 
   const [drawing, setDrawing] = useState(false);
 
@@ -73,10 +75,11 @@ export function BioDigitalViewer() {
     }
   }
   function reset() {
+    setHiddenNames([]);
     scene.current?.reset();
     setSelected(null);
     setSkin(82);
-    setRespiratory(100);
+    setRespiratory(4);
   }
 
   return (
@@ -104,6 +107,39 @@ export function BioDigitalViewer() {
           }}
           onReset={reset}
           onSelectStructure={selectStructure}
+          hiddenNames={hiddenNames}
+          onToggleStructure={(name) => {
+            const visible = hiddenNames.includes(name);
+            scene.current?.setVisible(name, visible);
+            setHiddenNames((previous) =>
+              visible
+                ? previous.filter((item) => item !== name)
+                : [...previous, name],
+            );
+          }}
+          onFocusStructure={(name) => {
+            scene.current?.focus(name);
+            setSelected(name);
+            scene.current?.select(name, "Select");
+            setMobileInfo(false);
+          }}
+          onIsolateStructure={(name) => {
+            scene.current?.isolate(name);
+            setSelected(name);
+            setSkin(82);
+            setRespiratory(4);
+            setMobileInfo(false);
+            const keys = new Set(
+              anatomyCatalog.find((structure) => structure.name === name)?.keys,
+            );
+            setHiddenNames(
+              anatomyCatalog
+                .filter(
+                  (structure) => !structure.keys.some((key) => keys.has(key)),
+                )
+                .map((structure) => structure.name),
+            );
+          }}
         />
 
         <section

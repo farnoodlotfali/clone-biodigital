@@ -1,32 +1,6 @@
 import { useState } from "react";
-import { Icon } from "./icon";
-
-const anatomy = [
-  "Aryepiglottic folds",
-  "Arytenoid cartilage",
-  "Auditory membranes",
-  "Auditory tube",
-  "Bronchi",
-  "Clothes",
-  "Corniculate cartilage",
-  "Corniculate tubercle",
-  "Cricoid cartilage",
-  "Cuneiform cartilage",
-  "Cuneiform tubercle",
-  "Epiglottic cartilage",
-  "Epiglottis",
-  "Ethmoid sinuses",
-  "Eyebrows",
-  "Eyelashes",
-  "Frontal sinuses",
-  "Hair",
-  "Larynx",
-  "Left lung",
-  "Nasal cavity",
-  "Pharynx",
-  "Right lung",
-  "Trachea",
-];
+import { Icon } from "../../ui/icon";
+import anatomyCatalog from "./anatomy-catalog.json";
 
 export type Panel = "info" | "layers" | "search" | null;
 
@@ -43,11 +17,29 @@ type ViewerPanelProps = {
   onHideAll: () => void;
   onReset: () => void;
   onSelectStructure: (name: string) => void;
+  hiddenNames: string[];
+  onToggleStructure: (name: string) => void;
+  onFocusStructure: (name: string) => void;
+  onIsolateStructure: (name: string) => void;
 };
 
 export function ViewerPanel({
-  panel, drawing, mobileInfo, selected, skin, respiratory, onClose,
-  onSkinChange, onRespiratoryChange, onHideAll, onReset, onSelectStructure,
+  panel,
+  drawing,
+  mobileInfo,
+  selected,
+  skin,
+  respiratory,
+  onClose,
+  onSkinChange,
+  onRespiratoryChange,
+  onHideAll,
+  onReset,
+  onSelectStructure,
+  hiddenNames,
+  onToggleStructure,
+  onFocusStructure,
+  onIsolateStructure,
 }: ViewerPanelProps) {
   const [query, setQuery] = useState("");
 
@@ -74,18 +66,16 @@ export function ViewerPanel({
       {panel === "info" && (
         <div className="bd-description">
           <p>
-            The respiratory system is made of all of the structures that
-            bring oxygen into the body and expel carbon dioxide. It
-            contains two zones: the conducting zone and the respiratory
-            zone.
+            The respiratory system is made of all of the structures that bring
+            oxygen into the body and expel carbon dioxide. It contains two
+            zones: the conducting zone and the respiratory zone.
           </p>
           <p>
             The conducting zone extends from the nose to the terminal
-            bronchioles within the lungs. These structures help filter,
-            warm, and moisten air while leading it towards the respiratory
-            zone. The respiratory zone, which contains the respiratory
-            bronchioles and alveoli, are the sites of oxygen-carbon
-            dioxide gas exchange.
+            bronchioles within the lungs. These structures help filter, warm,
+            and moisten air while leading it towards the respiratory zone. The
+            respiratory zone, which contains the respiratory bronchioles and
+            alveoli, are the sites of oxygen-carbon dioxide gas exchange.
           </p>
         </div>
       )}
@@ -125,28 +115,42 @@ export function ViewerPanel({
               <span>{skin}%</span>
             </div>
           </div>
-          <label className="bd-layer-label" htmlFor="respiratory-opacity">
+          <label className="bd-layer-label" htmlFor="respiratory-layers">
             RESPIRATORY SYSTEM
           </label>
           <div className="bd-layer-card bd-system-row">
-            <span aria-hidden="true">♧</span>
+            <button
+              className="bd-respiratory-toggle"
+              aria-label={
+                respiratory
+                  ? "Hide Respiratory System Layer"
+                  : "Show Respiratory System Layer"
+              }
+              onClick={() => onRespiratoryChange(respiratory ? 0 : 4)}
+            >
+              <Icon name="lungs" />
+            </button>
             <input
-              id="respiratory-opacity"
-              aria-label="Respiratory system opacity"
+              id="respiratory-layers"
+              aria-label="Respiratory System layer slider"
               type="range"
               min="0"
-              max="100"
+              max="4"
+              step="1"
+              list="respiratory-layer-stops"
               value={respiratory}
               onChange={(e) => onRespiratoryChange(Number(e.target.value))}
             />
+            <datalist id="respiratory-layer-stops">
+              {[0, 1, 2, 3, 4].map((value) => (
+                <option key={value} value={value} />
+              ))}
+            </datalist>
           </div>
           <p className="bd-layer-note">
             This model contains the respiratory system and body surface.
           </p>
-          <button
-            className="bd-secondary bd-hide-all"
-            onClick={onHideAll}
-          >
+          <button className="bd-secondary bd-hide-all" onClick={onHideAll}>
             Hide All Anatomy Layers
           </button>
           <button className="bd-text-button" onClick={onReset}>
@@ -166,34 +170,73 @@ export function ViewerPanel({
               onChange={(e) => setQuery(e.target.value)}
             />
             {query && (
-              <button
-                aria-label="Clear search"
-                onClick={() => setQuery("")}
-              >
+              <button aria-label="Clear search" onClick={() => setQuery("")}>
                 <Icon name="close" />
               </button>
             )}
           </label>
           <div className="bd-search-label">
-            List <span>Select structures</span>
+            List <span>{anatomyCatalog.length} structures</span>
           </div>
           <div className="bd-results">
-            {anatomy
-              .filter((name) =>
-                name.toLowerCase().includes(query.toLowerCase()),
+            {anatomyCatalog
+              .filter(({ name, latin }) =>
+                `${name} ${latin}`.toLowerCase().includes(query.toLowerCase()),
               )
-              .map((name) => (
-                <button
-                  key={name}
-                  className={selected === name ? "selected" : ""}
-                  onClick={() => onSelectStructure(name)}
+              .map(({ id, name, latin }) => (
+                <div
+                  key={id}
+                  className="bd-structure-row"
+                  data-structure-id={id}
                 >
-                  <Icon name={selected === name ? "select" : "eye"} />
-                  <span>{name}</span>
-                </button>
+                  <button
+                    className={`bd-structure-select ${selected === name ? "selected" : ""}`}
+                    aria-label={`Select ${name}`}
+                    onClick={() => onSelectStructure(name)}
+                  >
+                    <span>
+                      {name}
+                      {latin && <small>{latin}</small>}
+                    </span>
+                  </button>
+                  <button
+                    className="bd-structure-action"
+                    aria-label={`${hiddenNames.includes(name) ? "Show" : "Hide"} ${name}`}
+                    onClick={() => onToggleStructure(name)}
+                  >
+                    <Icon name={hiddenNames.includes(name) ? "hide" : "eye"} />
+                  </button>
+                  <details className="bd-structure-actions">
+                    <summary aria-label={`${name} menu`}>
+                      <Icon name="more" />
+                    </summary>
+                    <div>
+                      <button
+                        onClick={(event) => {
+                          event.currentTarget
+                            .closest("details")
+                            ?.removeAttribute("open");
+                          onFocusStructure(name);
+                        }}
+                      >
+                        Focus
+                      </button>
+                      <button
+                        onClick={(event) => {
+                          event.currentTarget
+                            .closest("details")
+                            ?.removeAttribute("open");
+                          onIsolateStructure(name);
+                        }}
+                      >
+                        Isolate
+                      </button>
+                    </div>
+                  </details>
+                </div>
               ))}
-            {!anatomy.some((name) =>
-              name.toLowerCase().includes(query.toLowerCase()),
+            {!anatomyCatalog.some(({ name, latin }) =>
+              `${name} ${latin}`.toLowerCase().includes(query.toLowerCase()),
             ) && <p className="bd-empty">No structures found.</p>}
           </div>
         </div>

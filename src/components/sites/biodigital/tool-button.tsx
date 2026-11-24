@@ -1,4 +1,4 @@
-import { Icon, type IconName } from "./icon";
+import { Icon, type IconName } from "../../ui/icon";
 
 export function ToolButton({
   icon,

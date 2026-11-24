@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Icon } from "./icon";
+import { Icon } from "../../ui/icon";
 import { ToolButton } from "./tool-button";
 
 type Stroke = { color: string; width: number; points: [number, number][] };

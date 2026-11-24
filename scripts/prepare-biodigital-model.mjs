@@ -1,8 +1,24 @@
 import fs from "node:fs";
 import { BufferGeometry, BufferAttribute, Matrix4, Vector3 } from "three";
+const named =
+  !process.argv.includes("--legacy") &&
+  fs.existsSync("docs/research/biodigital/model-named-raw.json");
 const raw = JSON.parse(
-  fs.readFileSync("docs/research/biodigital/model-raw.json", "utf8"),
+  fs.readFileSync(
+    named
+      ? "docs/research/biodigital/model-named-raw.json"
+      : "docs/research/biodigital/model-raw.json",
+    "utf8",
+  ),
 );
+const catalog = named
+  ? JSON.parse(
+      fs.readFileSync(
+        "src/components/sites/biodigital/anatomy-catalog.json",
+        "utf8",
+      ),
+    )
+  : [];
 const buffers = new Map(
   raw.buffers.map(([id, base64]) => [id, Buffer.from(base64, "base64")]),
 );
@@ -101,6 +117,7 @@ const meshes = raw.meshes.map((mesh, meshIndex) => {
   else if (center.y > 1.47) name = "Larynx";
   else if (size.y > size.x * 1.5) name = "Trachea";
   else name = "Bronchi";
+  name = mesh.displayName || name;
   console.log(
     meshIndex,
     name,
@@ -111,6 +128,10 @@ const meshes = raw.meshes.map((mesh, meshIndex) => {
     textured ? "atlas" : "surface",
   );
   return {
+    sourceKey: mesh.key,
+    structureIds: catalog
+      .filter((structure) => structure.keys.includes(mesh.key))
+      .map((structure) => structure.id),
     name,
     layer: isSkin ? "skin" : "respiratory",
     textured,

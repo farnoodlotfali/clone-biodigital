@@ -1,0 +1,16 @@
+{
+  "sourceMembershipMatched": true,
+  "distinctStages": 5,
+  "redPixelsByStage4to0": [
+    58827,
+    11372,
+    7377,
+    7365,
+    0
+  ],
+  "keyboard": true,
+  "toggle": true,
+  "reset": true,
+  "mobile": true,
+  "errors": []
+}

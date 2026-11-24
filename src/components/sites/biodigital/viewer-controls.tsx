@@ -1,6 +1,6 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
 import type { SceneHandle } from "./anatomy-scene";
-import { Icon } from "./icon";
+import { Icon } from "../../ui/icon";
 import { ToolButton } from "./tool-button";
 import type { Panel } from "./viewer-panel";
 
